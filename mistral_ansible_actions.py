@@ -49,7 +49,7 @@ class AnsiblePlaybookAction(base.Action):
 
     def __init__(self, playbook, limit_hosts=None, remote_user=None,
                  become=None, become_user=None, extra_vars=None,
-                 inventory=None, verbosity=5):
+                 inventory=None, verbosity=5, private_key=None):
 
         self._playbook = playbook
         self.limit_hosts = limit_hosts
@@ -59,6 +59,7 @@ class AnsiblePlaybookAction(base.Action):
         self.extra_vars = json.dumps(extra_vars)
         self._inventory = inventory
         self.verbosity = verbosity
+        self._private_key = private_key
 
     @property
     def inventory(self):
@@ -75,13 +76,30 @@ class AnsiblePlaybookAction(base.Action):
         # but if we do, they won't be propagated and
         # we should not move forward with the action
         # if the inventory generation failed
-        inventory = tempfile.NamedTemporaryFile()
+        inventory = tempfile.NamedTemporaryFile(suffix='.yaml')
         inventory.write(yaml.dump(self._inventory))
         # NOTE(flaper87): We need to flush the memory
         # because we're neither filling up the buffer
         # nor closing the file.
         inventory.flush()
         return inventory
+
+    @property
+    def private_key(self):
+        if not self._private_key:
+            return None
+
+        # NOTE(fultonj): if it's a path, use it
+        if (isinstance(self._private_key, six.string_types) and
+            os.path.exists(self._private_key)):
+            return open(self._private_key)
+
+        # NOTE(fultonj):
+        # NamedTemporaryFile is always created with mode 0600
+        private_key = tempfile.NamedTemporaryFile()
+        private_key.write(yaml.dump(self._private_key))
+        private_key.flush()
+        return private_key
 
     @property
     def playbook(self):
@@ -132,6 +150,9 @@ class AnsiblePlaybookAction(base.Action):
         inventory = self.inventory
         if inventory:
             command.extend(['--inventory-file', inventory.name])
+
+        if private_key:
+            command.extend(['--private-key', private_key.name])
 
         try:
             stderr, stdout = processutils.execute(
