@@ -151,6 +151,7 @@ class AnsiblePlaybookAction(base.Action):
         if inventory:
             command.extend(['--inventory-file', inventory.name])
 
+        private_key = self.private_key
         if private_key:
             command.extend(['--private-key', private_key.name])
 
