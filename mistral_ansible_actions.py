@@ -97,7 +97,7 @@ class AnsiblePlaybookAction(base.Action):
         # NOTE(fultonj):
         # NamedTemporaryFile is always created with mode 0600
         private_key = tempfile.NamedTemporaryFile()
-        private_key.write(yaml.dump(self._private_key))
+        private_key.write(self._private_key)
         private_key.flush()
         return private_key
 
@@ -164,5 +164,8 @@ class AnsiblePlaybookAction(base.Action):
             # temporary files
             if inventory:
                 inventory.close()
+
+            if private_key:
+                private_key.close()
 
             playbook.close()
